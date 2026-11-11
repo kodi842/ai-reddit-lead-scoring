@@ -1,0 +1,126 @@
+# Инструмент рассчитан на ежедневный запуск: 2, а не 1 — двойка покрывает
+# пропущенный день. Шире почти не имеет смысла: `.rss` отдаёт не больше
+# reddit.listing_limit (100) последних записей без пагинации, и на оживлённых
+# сабреддитах это и так около четырёх дней (см. README, раздел «Источник»).
+lookback_days: 2
+db_path: data/leads.sqlite
+reports_dir: reports
+
+reddit:
+  # RSS банит быстрее, чем банил JSON: на замерах Reddit отдавал 429 уже после
+  # полутора десятков быстрых запросов подряд. 2.5 с, которых хватало JSON, мало.
+  request_interval_s: 4.0
+  # Потолок, который принимает `.rss`; пагинации нет — на оживлённом сабреддите
+  # это может быть меньше суток, на тихом — пара недель. Смотрите README.
+  listing_limit: 100
+  max_messages_per_thread: 100
+  # Список сокращён по данным первого полного прогона (1465 постов за неделю,
+  # ни одного лида у удалённых) и его стоит пересматривать по мере накопления
+  # статистики — неделя мала как приговор, особенно малым выборкам. Удалены:
+  # мёртвые (свежайший пост 24-65 дней назад) RequestABot, jobbit,
+  # hireaprogrammer, NoCodeSaaS, programmingrequests; большая выборка (по 100
+  # постов) без лидов — hiring, Upwork, SideProject; малая выборка без
+  # кандидатов — PythonJobs, reactjs, javascript, indiehackers, freelance,
+  # GeeLark. Оставлены без лидов, но с кандидатами: Entrepreneur,
+  # ProxyEngineering, Playwright.
+  subreddits:
+    - webscraping
+    - Zapier
+    - Airtable
+    - n8n
+    - Bubbleio
+    - nocode
+    - automation
+    - AI_Agents
+    - smallbusiness
+    - slavelabour
+    - webflow
+    - DoneDirtCheap
+    - webdev
+    - GoogleAppsScript
+    - Entrepreneur
+    - SomebodyMakeThis
+    - forhire
+    - ProxyEngineering
+    - Playwright
+    - vibecoding
+    - lowcode
+    - ChatGPTCoding
+    - AppIdeas
+
+blanktrail:
+  api_base: http://127.0.0.1:8891/api/v1
+  api_key_env: BLANKTRAIL_API_KEY
+  port: 20180
+  # Корневой сертификат BlankTrail: он вскрывает TLS (MITM), а httpx проверяет
+  # сертификаты по набору certifi, а не по связке ключей macOS — установка
+  # кнопкой дашборда в системный Keychain тут не поможет. Скачайте файл
+  # кнопкой "CA Certificate" в шапке дашборда BlankTrail. Путь свой на каждой
+  # машине, поэтому не сюда — впишите его в .env как BLANKTRAIL_CA_CERT (имя
+  # переменной задаёт ca_cert_env, менять не обязательно). Явное значение
+  # ниже, если раскомментировать, всегда перебивает .env:
+  # ca_cert: /path/to/blanktrail-ca.pem
+  # Нужны, только если в настройках BlankTrail включена авторизация самого
+  # прокси-порта — тогда адрес без логина и пароля получит отказ. Пароль
+  # берётся из переменной окружения (впишите её в .env), как остальные секреты.
+  # proxy_user: user
+  # proxy_pass_env: BLANKTRAIL_PROXY_PASSWORD
+  profile:
+    protocol: http
+    mode: db
+    browser: chrome
+    os: macos
+    keep_sessions: true
+    js_solver: true
+    spoof_user_agent: true
+    spoof_headers: true
+    # 0 — порт не закрывается сам по простою. Иначе действует общий тайм-аут
+    # в 30 минут, а между сбором постов и скачиванием комментариев стоит
+    # предфильтр — десятки минут одних вызовов модели без единого запроса
+    # к Reddit, и порт успел бы закрыться сам.
+    idle_seconds: 0
+
+heuristic:
+  stop_phrases:
+    - "[for hire]"
+    - "showcase"
+    - "self-promotion"
+    - "megathread"
+  stop_authors:
+    - AutoModerator
+
+llm:
+  concurrency: 3
+  backends:
+    claude_code:
+      type: claude_code
+    deepseek:
+      type: openai_compat
+      base_url: https://api.deepseek.com
+      api_key_env: DEEPSEEK_API_KEY
+  stages:
+    prefilter:
+      backend: claude_code
+      model: haiku
+      effort: low
+      batch_size: 25
+    score:
+      backend: claude_code
+      model: sonnet
+      effort: medium
+    verify:
+      backend: claude_code
+      model: opus
+      effort: high
+      threshold: 70
+
+report:
+  min_score: 55
+  max_context_messages: 20
+  context_message_chars: 300
+
+outreach:
+  reddit_username: Slow-Plate4355   # нужен автопроверке, чтобы узнать свой комментарий
+  goal_rub: 15000                   # недельная цель, для строки прогресса
+  rates_to_rub:
+    USD: 85

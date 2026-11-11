@@ -1,0 +1,51 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Лиды по тредам</title>
+<style>
+ body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#f5f6fb;color:#0f172a}
+ .wrap{max-width:1150px;margin:0 auto;padding:26px 18px 48px}
+ h1{font-size:23px;margin:0 0 4px} .sub{color:#64748b;font-size:14px;margin-bottom:18px}
+ .kpi{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+ .kc{background:#fff;border:1px solid #e6e8f0;border-radius:12px;padding:12px 16px} .kc b{font-size:22px;display:block} .kc span{color:#64748b;font-size:12px}
+ .thread{background:#fff;border:1px solid #e6e8f0;border-radius:14px;padding:16px 18px;margin-bottom:16px;box-shadow:0 1px 3px rgba(15,23,42,.04)}
+ .thead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}
+ .prob{font-size:16px;font-weight:700;line-height:1.35} .chat{color:#64748b;font-size:12px}
+ .st{font-size:12px;padding:3px 9px;border-radius:20px;font-weight:600}
+ .st.open{background:#fef2f2;color:#b91c1c} .st.closed{background:#ecfdf5;color:#065f46}
+ .lbl{font-size:13px;font-weight:600;color:#475569;margin:12px 0 6px}
+ table{border-collapse:collapse;width:100%} th,td{padding:6px 8px;text-align:left;border-bottom:1px solid #eef0f6;font-size:12.5px;vertical-align:top}
+ th{background:#f0f2f8;font-size:11.5px} td.sc{font-weight:700} td.q{max-width:280px;color:#334155}
+ td.lg{text-align:center;white-space:nowrap} .lang{font-size:15px}
+ td.dt{white-space:nowrap;color:#334155} .age{color:#94a3b8;font-size:10.5px}
+ .qru{margin-top:4px;color:#64748b;font-size:11.5px;line-height:1.35}
+ .qlink{margin-top:4px;font-size:11.5px} .qlink a,td a{color:#4f46e5;text-decoration:none;font-weight:600}
+ .qlink a:hover,td a:hover{text-decoration:underline}
+ .ctx{margin-top:10px;font-size:12.5px} .ctx summary{cursor:pointer;color:#475569;font-weight:600}
+ .ctxm{padding:4px 0;border-bottom:1px solid #f1f5f9;line-height:1.4} .ctxu{font-weight:600;margin-right:6px}
+ .ctxu a{color:#4f46e5;text-decoration:none}
+ .muted{color:#94a3b8} .note{margin-top:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:8px 12px;font-size:12.5px}
+ footer{margin-top:24px;padding:16px;background:#fff;border:1px solid #e6e8f0;border-radius:12px;font-size:13px;color:#64748b}
+</style></head><body><div class="wrap">
+<h1>🧵 Лиды по тредам</h1>
+<div class="sub">Проблемные обсуждения: носители боли (лиды) с оценкой, цитатой и риском.</div>
+<div class="kpi">
+ <div class="kc"><b>{{ kpi.threads }}</b><span>тредов</span></div>
+ <div class="kc"><b>{{ kpi.leads }}</b><span>лидов суммарно</span></div>
+ <div class="kc"><b>{{ kpi.open }}</b><span>🔴 открытых тем</span></div>
+ <div class="kc"><b>{{ kpi.pending }}</b><span>⏳ ждут моего разбора</span></div>
+</div>
+{% for t in threads %}
+<div class="thread">
+  <div class="thead">
+    <div class="prob">🧵 {{ t.title }}</div>
+    <div>{% if t.status == 'closed' %}<span class="st closed">🟢 закрыта</span>{% else %}<span class="st open">🔴 открыта</span>{% endif %} <span class="chat"><a href="{{ t.url }}">{{ t.source_key }}</a>{% if t.verified %} · ✅ проверено{% endif %}</span></div>
+  </div>
+  <div class="lbl">🎯 Лиды (страдающие) — {{ t.leads | length }}</div>
+  <table><thead><tr><th>Балл</th><th>Бэнд</th><th>@username</th><th>Язык</th><th>Дата</th><th>Цитата</th>
+    <th>Риск</th><th>Почему</th><th>Что предложить</th></tr></thead>
+    <tbody>{% for l in t.leads %}<tr><td class='sc'>{{ l.score }}</td><td>{{ l.band }}</td><td><a href="{{ l.profile_url }}">@{{ l.username }}</a></td><td class='lg'><span class='lang' title='{{ l.lang }}'>{{ l.flag }}</span></td><td class='dt'>{{ l.date }}<div class='age'>{{ l.age }}</div></td><td class='q'>{{ l.quote }}<div class='qru'><i>RU: {{ l.quote_ru }}</i></div></td><td>{{ l.risk_icon }} {{ l.risk_note }}</td><td>{{ l.why }}</td><td>{{ l.offer }}</td></tr>{% endfor %}</tbody></table>
+  {% if t.context %}<details class='ctx'><summary>🧵 Показать тред ({{ t.context | length }} сообщений)</summary>{% for m in t.context %}<div class='ctxm'><span class='ctxu'>@{{ m.author }}</span> {{ m.body }}</div>{% endfor %}</details>{% endif %}
+</div>
+{% endfor %}
+{% if not threads %}<div class="note">В этом прогоне лидов с баллом {{ min_score }}+ не нашлось.</div>{% endif %}
+<footer>Собрано {{ generated_at }} · источники: {{ sources | join(', ') or '—' }} · порог показа: {{ min_score }}</footer>
+</div></body></html>

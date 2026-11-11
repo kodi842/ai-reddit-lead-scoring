@@ -1,0 +1,180 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Дашборд</title>
+<style>
+:root {
+  --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100;
+  --surface: #fcfcfb; --text-primary: #0b0b0b; --text-secondary: #52514e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
+    --surface: #1a1a19; --text-primary: #ffffff; --text-secondary: #c3c2b7;
+  }
+}
+:root[data-theme="dark"] {
+  --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
+  --surface: #1a1a19; --text-primary: #ffffff; --text-secondary: #c3c2b7;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--surface); color: var(--text-primary);
+       font-family: -apple-system, "Segoe UI", Roboto, sans-serif; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-size: 22px; margin: 0 0 4px; }
+h2 { font-size: 15px; margin: 0 0 12px; }
+h3 { font-size: 13px; margin: 16px 0 8px; color: var(--text-secondary); }
+h3:first-of-type { margin-top: 0; }
+.sub { color: var(--text-secondary); font-size: 13px; margin-bottom: 20px; }
+.card { border: 1px solid var(--text-secondary); border-radius: 14px;
+        padding: 16px 20px; margin-bottom: 18px; }
+.hero-num { font-size: 42px; font-weight: 800; line-height: 1.15; }
+.hero-pct { font-size: 20px; font-weight: 700; margin-left: 8px; color: var(--text-secondary); }
+.hero-goal { color: var(--text-secondary); font-size: 14px; margin-top: 2px; }
+.hero-sub { margin-top: 14px; font-size: 13.5px; color: var(--text-secondary); }
+.hero-sub b { color: var(--text-primary); }
+.unrated { margin-top: 4px; }
+.actions-list { list-style: none; margin: 0 0 4px; padding: 0; }
+.actions-list li { padding: 8px 4px; border-bottom: 1px solid var(--text-secondary);
+                    font-size: 13.5px; }
+.actions-list li:last-child { border-bottom: none; }
+.actions-empty { color: var(--text-secondary); font-size: 13.5px; font-style: italic; margin: 0 0 4px; }
+.critical-heading { color: var(--text-primary); font-weight: 700; }
+.dash-alert-critical { border-left: 4px solid var(--series-2); padding: 8px 10px; font-weight: 600; }
+.dash-alert-critical .badge { display: inline-block; background: var(--series-2);
+                               color: var(--text-primary); border-radius: 4px;
+                               padding: 1px 7px; font-size: 11px; font-weight: 700;
+                               margin-right: 6px; }
+.chart { overflow-x: auto; }
+.chart svg { display: block; min-width: 480px; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+.table-wrap { overflow-x: auto; }
+th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--text-secondary);
+         white-space: nowrap; }
+th { color: var(--text-secondary); font-weight: 600; font-size: 11.5px; }
+a { color: var(--series-1); }
+footer { margin-top: 20px; color: var(--text-secondary); font-size: 12.5px; }
+</style></head><body><div class="wrap">
+<h1>📊 Дашборд</h1>
+<div class="sub">Собрано {{ generated_at }} · обновляйте страницу после каждой команды</div>
+
+<section class="card" id="hero">
+  <h2>1. Прогресс к цели</h2>
+  <div class="hero-num">{{ "%.0f"|format(hero.earned_rub) }} ₽<span class="hero-pct">{% if hero.pct is not none %}({{ "%.0f"|format(hero.pct) }}%){% endif %}</span></div>
+  <div class="hero-goal">из {{ "%.0f"|format(hero.goal_rub) }} ₽{% if hero.reached %} — цель достигнута{% endif %}</div>
+  <div class="hero-sub">
+    <div>Договорено, не оплачено: <b>{{ "%.0f"|format(hero.unpaid_rub) }} ₽</b> — эти деньги ещё не пришли и в цель не считаются.</div>
+    {% for line in hero.unrated %}
+    <div class="unrated">Ещё выиграно <b>{{ "%g"|format(line.amount) }} {{ line.code }}</b>
+      ({% if line.paid %}оплачено{% else %}не оплачено{% endif %}) — курс в config.yaml
+      не задан: показано как есть, в рублёвый итог не включено.</div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card" id="actions">
+  <h2>2. Что делать сейчас</h2>
+
+  <h3>Без ответа дольше 3 дней — напомнить или списать</h3>
+  {% if actions.stale %}
+  <ul class="actions-list">
+    {% for item in actions.stale %}
+    <li>#{{ item.id }} · r/{{ item.subreddit }} · {{ item.days_ago }} дн. без ответа
+      {% if item.thread_title %}— «{{ item.thread_title }}»{% endif %}
+      {% if item.note %} · заметка: {{ item.note }}{% endif %}
+      · <a href="{{ item.url }}">тред</a></li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="actions-empty">Пусто — откликов без ответа дольше 3 дней сейчас нет.</p>
+  {% endif %}
+
+  <h3>Движение в треде с прошлой проверки</h3>
+  {% if actions.movement %}
+  <ul class="actions-list">
+    {% for item in actions.movement %}
+    <li>#{{ item.id }} · r/{{ item.subreddit }}
+      {% if item.thread_title %}— «{{ item.thread_title }}»{% endif %}
+      — записей было {{ item.entries_before }}, стало {{ item.entries_now }}
+      · <a href="{{ item.url }}">тред</a></li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="actions-empty">Пусто — движения в тредах с прошлой проверки не было.</p>
+  {% endif %}
+
+  <h3 class="critical-heading">⚠️ Комментарий пропал из публичной ленты</h3>
+  {% if actions.hidden %}
+  <ul class="actions-list">
+    {% for item in actions.hidden %}
+    <li class="dash-alert-critical"><span class="badge">СКРЫТО</span>#{{ item.id }} · r/{{ item.subreddit }}
+      {% if item.thread_title %}— «{{ item.thread_title }}»{% endif %}
+      — не виден в публичной ленте с проверки {{ item.checked_at }}: со своего экрана вы это не увидите
+      · <a href="{{ item.url }}">тред</a></li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="actions-empty">Пусто — скрытых комментариев не обнаружено.</p>
+  {% endif %}
+</section>
+
+<section class="card" id="funnel">
+  <h2>3. Воронка</h2>
+  <div class="chart">
+<!--DASHBOARD_FUNNEL_SVG-->
+  </div>
+  {% if funnel.conversion_pct is not none %}
+  <div class="hero-sub">Конверсия в заказ: <b>{{ "%.0f"|format(funnel.conversion_pct) }}%</b></div>
+  {% endif %}
+</section>
+
+<section class="card" id="karma">
+  <h2>4. Карма по дням</h2>
+  {% if karma.has_chart %}
+  <div class="chart">
+<!--DASHBOARD_KARMA_SVG-->
+  </div>
+  <div class="hero-sub">Сейчас: <b>{{ karma.latest }}</b> · с {{ karma.since }}</div>
+  {% else %}
+  <p class="actions-empty">Истории мало, вернитесь через пару дней.</p>
+  {% endif %}
+</section>
+
+<section class="card" id="leads">
+  <h2>5. Запас лидов</h2>
+  <div class="hero-sub">Доступно сейчас: <b>{{ leads.available }}</b> · в гиг-сабах, пока недоступны (нужна карма): <b>{{ leads.gig_locked }}</b></div>
+  {% if leads.by_subreddit %}
+  <div class="table-wrap"><table><thead><tr><th>Сабреддит</th><th>Лидов</th><th></th></tr></thead>
+  <tbody>
+  {% for sub, n, is_gig in leads.by_subreddit %}
+  <tr><td>r/{{ sub }}</td><td>{{ n }}</td><td>{% if is_gig %}гиг-саб{% endif %}</td></tr>
+  {% endfor %}
+  </tbody></table></div>
+  {% else %}
+  <p class="actions-empty">Неотработанных лидов нужного балла сейчас нет.</p>
+  {% endif %}
+</section>
+
+<section class="card" id="rows">
+  <h2>6. Отклики</h2>
+  {% if rows %}
+  <div class="table-wrap"><table><thead><tr>
+    <th>id</th><th>сабреддит</th><th>канал</th><th>дней назад</th><th>статус</th>
+    <th>сумма</th><th>оплата</th><th>срок</th><th>комментарий</th><th>тред</th>
+  </tr></thead><tbody>
+  {% for r in rows %}
+  <tr>
+    <td>{{ r.id }}</td><td>{{ r.subreddit }}</td><td>{{ r.channel }}</td>
+    <td>{{ r.days_ago }}</td><td>{{ r.status }}</td><td>{{ r.amount }}</td>
+    <td>{{ r.payment }}</td><td>{{ r.due_date }}</td><td>{{ r.comment_flag }}</td>
+    <td><a href="{{ r.url }}">тред</a></td>
+  </tr>
+  {% endfor %}
+  </tbody></table></div>
+  {% else %}
+  <p class="actions-empty">Откликов пока нет: leadparser out add &lt;url&gt; --channel comment|dm</p>
+  {% endif %}
+</section>
+
+<footer>Собрано {{ generated_at }}</footer>
+</div></body></html>
